@@ -18,6 +18,7 @@ import (
 	"scriberr/internal/transcription/pipeline"
 	"scriberr/internal/transcription/registry"
 	"scriberr/internal/webhook"
+	"gorm.io/gorm"
 	"scriberr/pkg/logger"
 )
 
@@ -76,6 +77,9 @@ func NewUnifiedTranscriptionService(jobRepo repository.JobRepository, tempDir, o
 func (u *UnifiedTranscriptionService) SetBroadcaster(b *sse.Broadcaster) {
 	u.broadcaster = b
 }
+
+// SetWebhookDatabase configures global webhook subscriptions.
+func (u *UnifiedTranscriptionService) SetWebhookDatabase(db *gorm.DB) { u.webhookService.SetDatabase(db) }
 
 // Initialize prepares all registered models for use
 func (u *UnifiedTranscriptionService) Initialize(ctx context.Context) error {
@@ -153,6 +157,13 @@ func (u *UnifiedTranscriptionService) ProcessJob(ctx context.Context, jobID stri
 				"error":  errorMsg,
 			})
 		}
+
+		job.Status = status
+		event := webhook.EventTranscriptionSuccess
+		if status == models.StatusFailed { event = webhook.EventTranscriptionFailed }
+		u.webhookService.Dispatch(context.Background(), event, job, map[string]interface{}{
+			"model": job.Parameters.Model, "model_family": job.Parameters.ModelFamily, "duration_ms": execution.ProcessingDuration,
+		}, errorMsg)
 
 		// Trigger webhook if callback URL is present
 		if job.Parameters.CallbackURL != nil && *job.Parameters.CallbackURL != "" {

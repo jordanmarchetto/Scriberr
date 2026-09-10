@@ -47,6 +47,23 @@ const (
 )
 
 // WhisperXParams contains parameters for WhisperX transcription
+// Webhook stores a global outbound webhook subscription.
+type Webhook struct {
+	ID string `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	Name string `json:"name" gorm:"type:varchar(255);not null"`
+	URL string `json:"url" gorm:"type:text;not null"`
+	Secret *string `json:"-" gorm:"type:text"`
+	Events string `json:"-" gorm:"type:text;not null"`
+	Enabled bool `json:"enabled" gorm:"not null;default:true"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (w *Webhook) BeforeCreate(tx *gorm.DB) error {
+	if w.ID == "" { w.ID = uuid.New().String() }
+	return nil
+}
+
 type WhisperXParams struct {
 	// Model family (whisper or nvidia)
 	ModelFamily string `json:"model_family" gorm:"type:varchar(20);default:'whisper'"`
