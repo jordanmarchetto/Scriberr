@@ -32,7 +32,10 @@ export function AutoSummarySettings() {
 
   const save = async () => {
     setMessage("");
-    if (enabled && !templateID) { setMessage("Choose a default template before enabling auto-summary."); return; }
+    if (enabled && !templateID) {
+      setMessage("Choose a default template before enabling auto-summary.");
+      return;
+    }
     setSaving(true);
     try {
       const response = await fetch("/api/v1/summaries/settings", {
@@ -40,14 +43,17 @@ export function AutoSummarySettings() {
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({ auto_summarize: enabled, default_template_id: templateID || null }),
       });
-      if (!response.ok) { setMessage((await response.json()).error || "Failed to save auto-summary settings."); return; }
+      if (!response.ok) {
+        setMessage((await response.json()).error || "Failed to save auto-summary settings.");
+        return;
+      }
       setMessage("Auto-summary settings saved.");
     } finally { setSaving(false); }
   };
 
-  return <div className="bg-[var(--bg-main)] border border-[var(--border-subtle)] rounded-xl p-4 sm:p-5">
+  return <div className="bg-[var(--bg-main)]/50 border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 sm:p-6 shadow-sm">
     <div className="flex items-start justify-between gap-4">
-      <div><h3 className="font-medium text-[var(--text-primary)]">Automatic summaries</h3><p className="text-sm text-[var(--text-secondary)] mt-1">Generate a summary in the background when a transcription finishes successfully.</p></div>
+      <div><h3 className="text-lg font-medium text-[var(--text-primary)]">Auto-Summary</h3><p className="text-sm text-[var(--text-secondary)] mt-1">Generate a summary in the background when a transcription finishes successfully.</p></div>
       <Switch checked={enabled} onCheckedChange={setEnabled} aria-label="Enable automatic summaries" />
     </div>
     <div className="mt-4 max-w-xl">

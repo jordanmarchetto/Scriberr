@@ -219,9 +219,15 @@ func (h *Handler) SaveSummarySettings(c *gin.Context) {
 			s = &models.SummarySetting{
 				UpdatedAt: time.Now(),
 			}
-			if req.DefaultModel != nil { s.DefaultModel = *req.DefaultModel }
-			if req.AutoSummarize != nil { s.AutoSummarize = *req.AutoSummarize }
-			if req.DefaultTemplateID != nil { s.DefaultTemplateID = req.DefaultTemplateID }
+			if req.DefaultModel != nil {
+				s.DefaultModel = *req.DefaultModel
+			}
+			if req.AutoSummarize != nil {
+				s.AutoSummarize = *req.AutoSummarize
+			}
+			if req.DefaultTemplateID != nil {
+				s.DefaultTemplateID = req.DefaultTemplateID
+			}
 			// We can't use Create from BaseRepository because it expects *T, but GetSettings returns *T.
 			// BaseRepository.Create expects *T.
 			// Actually BaseRepository[T] Create takes *T.
@@ -232,8 +238,14 @@ func (h *Handler) SaveSummarySettings(c *gin.Context) {
 			// I need to add SaveSettings to SummaryRepository which handles creation too.
 			// I added SaveSettings(ctx, settings).
 			if s.AutoSummarize {
-				if s.DefaultTemplateID == nil || *s.DefaultTemplateID == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "a default summary template is required when auto-summarize is enabled"}); return }
-				if _, err := h.summaryRepo.FindByID(c.Request.Context(), *s.DefaultTemplateID); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "default summary template not found"}); return }
+				if s.DefaultTemplateID == nil || *s.DefaultTemplateID == "" {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "a default summary template is required when auto-summarize is enabled"})
+					return
+				}
+				if _, err := h.summaryRepo.FindByID(c.Request.Context(), *s.DefaultTemplateID); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "default summary template not found"})
+					return
+				}
 			}
 			if err := h.summaryRepo.SaveSettings(c.Request.Context(), s); err != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
@@ -245,12 +257,24 @@ func (h *Handler) SaveSummarySettings(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save settings"})
 		return
 	}
-	if req.DefaultModel != nil { s.DefaultModel = *req.DefaultModel }
-	if req.AutoSummarize != nil { s.AutoSummarize = *req.AutoSummarize }
-	if req.DefaultTemplateID != nil { s.DefaultTemplateID = req.DefaultTemplateID }
+	if req.DefaultModel != nil {
+		s.DefaultModel = *req.DefaultModel
+	}
+	if req.AutoSummarize != nil {
+		s.AutoSummarize = *req.AutoSummarize
+	}
+	if req.DefaultTemplateID != nil {
+		s.DefaultTemplateID = req.DefaultTemplateID
+	}
 	if s.AutoSummarize {
-		if s.DefaultTemplateID == nil || *s.DefaultTemplateID == "" { c.JSON(http.StatusBadRequest, gin.H{"error": "a default summary template is required when auto-summarize is enabled"}); return }
-		if _, err := h.summaryRepo.FindByID(c.Request.Context(), *s.DefaultTemplateID); err != nil { c.JSON(http.StatusBadRequest, gin.H{"error": "default summary template not found"}); return }
+		if s.DefaultTemplateID == nil || *s.DefaultTemplateID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "a default summary template is required when auto-summarize is enabled"})
+			return
+		}
+		if _, err := h.summaryRepo.FindByID(c.Request.Context(), *s.DefaultTemplateID); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "default summary template not found"})
+			return
+		}
 	}
 	s.UpdatedAt = time.Now()
 	if err := h.summaryRepo.SaveSettings(c.Request.Context(), s); err != nil {
