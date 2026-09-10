@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"scriberr/internal/models"
 	"scriberr/internal/webhook"
@@ -16,11 +17,12 @@ import (
 
 // WebhookRequest is the configuration accepted when creating or updating a webhook.
 type WebhookRequest struct {
-	Name    string          `json:"name" binding:"required"`
-	URL     string          `json:"url" binding:"required"`
-	Secret  string          `json:"secret,omitempty"`
-	Events  []webhook.Event `json:"events" binding:"required"`
-	Enabled *bool           `json:"enabled"`
+	Name        string          `json:"name" binding:"required"`
+	URL         string          `json:"url" binding:"required"`
+	Secret      string          `json:"secret,omitempty"`
+	ClearSecret bool            `json:"clear_secret,omitempty"`
+	Events      []webhook.Event `json:"events" binding:"required"`
+	Enabled     *bool           `json:"enabled"`
 }
 
 // WebhookResponse describes a configured webhook without exposing its signing secret.
@@ -33,10 +35,36 @@ type WebhookResponse struct {
 	HasSecret bool     `json:"has_secret"`
 }
 
+// WebhookDeliveryResponse describes a delivery attempt without exposing its
+// destination snapshot, signed payload, or signature.
+type WebhookDeliveryResponse struct {
+	ID             string     `json:"id"`
+	WebhookID      string     `json:"webhook_id"`
+	WebhookName    string     `json:"webhook_name"`
+	Event          string     `json:"event"`
+	JobID          string     `json:"job_id"`
+	Status         string     `json:"status"`
+	AttemptCount   int        `json:"attempt_count"`
+	ResponseStatus *int       `json:"response_status,omitempty"`
+	LastError      *string    `json:"last_error,omitempty"`
+	NextAttemptAt  *time.Time `json:"next_attempt_at,omitempty"`
+	DeliveredAt    *time.Time `json:"delivered_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
+
 func toWebhookResponse(h models.Webhook) WebhookResponse {
 	var events []string
 	_ = json.Unmarshal([]byte(h.Events), &events)
 	return WebhookResponse{ID: h.ID, Name: h.Name, URL: h.URL, Events: events, Enabled: h.Enabled, HasSecret: h.Secret != nil && *h.Secret != ""}
+}
+
+func toWebhookDeliveryResponse(d models.WebhookDelivery) WebhookDeliveryResponse {
+	return WebhookDeliveryResponse{
+		ID: d.ID, WebhookID: d.WebhookID, WebhookName: d.WebhookName, Event: d.Event,
+		JobID: d.JobID, Status: d.Status, AttemptCount: d.AttemptCount,
+		ResponseStatus: d.ResponseStatus, LastError: d.LastError,
+		NextAttemptAt: d.NextAttemptAt, DeliveredAt: d.DeliveredAt, CreatedAt: d.CreatedAt,
+	}
 }
 
 func validateWebhookRequest(req WebhookRequest) error {
@@ -79,6 +107,30 @@ func (h *Handler) ListWebhooks(c *gin.Context) {
 	result := make([]WebhookResponse, 0, len(hooks))
 	for _, hook := range hooks {
 		result = append(result, toWebhookResponse(hook))
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+// ListWebhookDeliveries returns recent configured webhook delivery history.
+// @Summary List webhook deliveries
+// @Description List the 50 most recent outbound webhook deliveries and their retry status
+// @Tags webhooks
+// @Produce json
+// @Success 200 {array} WebhookDeliveryResponse
+// @Failure 401 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security ApiKeyAuth
+// @Security BearerAuth
+// @Router /api/v1/webhooks/deliveries [get]
+func (h *Handler) ListWebhookDeliveries(c *gin.Context) {
+	deliveries, err := h.webhookService.ListDeliveries(c.Request.Context(), 50)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	result := make([]WebhookDeliveryResponse, 0, len(deliveries))
+	for _, delivery := range deliveries {
+		result = append(result, toWebhookDeliveryResponse(delivery))
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -161,7 +213,9 @@ func (h *Handler) UpdateWebhook(c *gin.Context) {
 	if req.Enabled != nil {
 		hook.Enabled = *req.Enabled
 	}
-	if req.Secret != "" {
+	if req.ClearSecret {
+		hook.Secret = nil
+	} else if req.Secret != "" {
 		hook.Secret = &req.Secret
 	}
 	if err := h.webhookService.Update(c.Request.Context(), hook); err != nil {

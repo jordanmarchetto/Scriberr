@@ -77,6 +77,7 @@ func Initialize(dbPath string) error {
 		&models.Note{},
 		&models.RefreshToken{},
 		&models.Webhook{},
+		&models.WebhookDelivery{},
 	); err != nil {
 		return fmt.Errorf("failed to auto migrate: %v", err)
 	}

@@ -246,6 +246,7 @@ func SetupRoutes(handler *Handler, authService *auth.AuthService) *gin.Engine {
 		webhooks.Use(middleware.AuthMiddleware(authService))
 		{
 			webhooks.GET("/", handler.ListWebhooks)
+			webhooks.GET("/deliveries", handler.ListWebhookDeliveries)
 			webhooks.POST("/", handler.CreateWebhook)
 			webhooks.PUT("/:id", handler.UpdateWebhook)
 			webhooks.DELETE("/:id", handler.DeleteWebhook)

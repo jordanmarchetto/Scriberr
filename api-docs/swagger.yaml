@@ -391,8 +391,37 @@ definitions:
       api_key:
         type: string
     type: object
+  api.WebhookDeliveryResponse:
+    properties:
+      attempt_count:
+        type: integer
+      created_at:
+        type: string
+      delivered_at:
+        type: string
+      event:
+        type: string
+      id:
+        type: string
+      job_id:
+        type: string
+      last_error:
+        type: string
+      next_attempt_at:
+        type: string
+      response_status:
+        type: integer
+      status:
+        type: string
+      webhook_id:
+        type: string
+      webhook_name:
+        type: string
+    type: object
   api.WebhookRequest:
     properties:
+      clear_secret:
+        type: boolean
       enabled:
         type: boolean
       events:
@@ -3339,6 +3368,37 @@ paths:
       - ApiKeyAuth: []
       - BearerAuth: []
       summary: Update a webhook
+      tags:
+      - webhooks
+  /api/v1/webhooks/deliveries:
+    get:
+      description: List the 50 most recent outbound webhook deliveries and their retry
+        status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.WebhookDeliveryResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      summary: List webhook deliveries
       tags:
       - webhooks
   /health:

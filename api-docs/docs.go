@@ -3873,6 +3873,55 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/webhooks/deliveries": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    },
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "List the 50 most recent outbound webhook deliveries and their retry status",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "List webhook deliveries",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/api.WebhookDeliveryResponse"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/webhooks/{id}": {
             "put": {
                 "security": [
@@ -4655,6 +4704,47 @@ const docTemplate = `{
                 }
             }
         },
+        "api.WebhookDeliveryResponse": {
+            "type": "object",
+            "properties": {
+                "attempt_count": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "delivered_at": {
+                    "type": "string"
+                },
+                "event": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "last_error": {
+                    "type": "string"
+                },
+                "next_attempt_at": {
+                    "type": "string"
+                },
+                "response_status": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "webhook_id": {
+                    "type": "string"
+                },
+                "webhook_name": {
+                    "type": "string"
+                }
+            }
+        },
         "api.WebhookRequest": {
             "type": "object",
             "required": [
@@ -4663,6 +4753,9 @@ const docTemplate = `{
                 "url"
             ],
             "properties": {
+                "clear_secret": {
+                    "type": "boolean"
+                },
                 "enabled": {
                     "type": "boolean"
                 },

@@ -66,6 +66,34 @@ func (w *Webhook) BeforeCreate(tx *gorm.DB) error {
 	return nil
 }
 
+// WebhookDelivery stores an outbound event before it is sent so delivery can
+// be retried after transient failures or an application restart.
+type WebhookDelivery struct {
+	ID             string     `json:"id" gorm:"primaryKey;type:varchar(36)"`
+	WebhookID      string     `json:"webhook_id" gorm:"type:varchar(36);not null;index"`
+	WebhookName    string     `json:"webhook_name" gorm:"type:varchar(255);not null"`
+	Event          string     `json:"event" gorm:"type:varchar(50);not null;index"`
+	JobID          string     `json:"job_id" gorm:"type:varchar(36);not null;index"`
+	DestinationURL string     `json:"-" gorm:"type:text;not null"`
+	Payload        string     `json:"-" gorm:"type:text;not null"`
+	Signature      string     `json:"-" gorm:"type:text"`
+	Status         string     `json:"status" gorm:"type:varchar(20);not null;index"`
+	AttemptCount   int        `json:"attempt_count" gorm:"not null;default:0"`
+	ResponseStatus *int       `json:"response_status,omitempty"`
+	LastError      *string    `json:"last_error,omitempty" gorm:"type:text"`
+	NextAttemptAt  *time.Time `json:"next_attempt_at,omitempty" gorm:"index"`
+	DeliveredAt    *time.Time `json:"delivered_at,omitempty"`
+	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+func (d *WebhookDelivery) BeforeCreate(tx *gorm.DB) error {
+	if d.ID == "" {
+		d.ID = uuid.New().String()
+	}
+	return nil
+}
+
 type WhisperXParams struct {
 	// Model family (whisper or nvidia)
 	ModelFamily string `json:"model_family" gorm:"type:varchar(20);default:'whisper'"`
