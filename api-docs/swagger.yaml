@@ -391,6 +391,42 @@ definitions:
       api_key:
         type: string
     type: object
+  api.WebhookRequest:
+    properties:
+      enabled:
+        type: boolean
+      events:
+        items:
+          $ref: '#/definitions/webhook.Event'
+        type: array
+      name:
+        type: string
+      secret:
+        type: string
+      url:
+        type: string
+    required:
+    - events
+    - name
+    - url
+    type: object
+  api.WebhookResponse:
+    properties:
+      enabled:
+        type: boolean
+      events:
+        items:
+          type: string
+        type: array
+      has_secret:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+      url:
+        type: string
+    type: object
   api.YouTubeDownloadRequest:
     properties:
       title:
@@ -776,6 +812,20 @@ definitions:
       transcript:
         type: string
     type: object
+  webhook.Event:
+    enum:
+    - recording.uploaded
+    - transcription.completed
+    - transcription.failed
+    - summary.completed
+    - summary.failed
+    type: string
+    x-enum-varnames:
+    - EventRecordingUploaded
+    - EventTranscriptionSuccess
+    - EventTranscriptionFailed
+    - EventSummarySuccess
+    - EventSummaryFailed
 host: localhost:8080
 info:
   contact:
@@ -3133,6 +3183,164 @@ paths:
       summary: Update user settings
       tags:
       - user
+  /api/v1/webhooks/:
+    get:
+      description: List configured outbound webhook subscriptions without exposing
+        signing secrets
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.WebhookResponse'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      summary: List webhooks
+      tags:
+      - webhooks
+    post:
+      consumes:
+      - application/json
+      description: Create an outbound webhook subscription for one or more recording
+        lifecycle events
+      parameters:
+      - description: Webhook configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.WebhookRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/api.WebhookResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      summary: Create a webhook
+      tags:
+      - webhooks
+  /api/v1/webhooks/{id}:
+    delete:
+      description: Delete a configured outbound webhook subscription
+      parameters:
+      - description: Webhook ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      summary: Delete a webhook
+      tags:
+      - webhooks
+    put:
+      consumes:
+      - application/json
+      description: Update a webhook's name, URL, subscribed events, enabled state,
+        and optionally its signing secret
+      parameters:
+      - description: Webhook ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Webhook configuration
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/api.WebhookRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.WebhookResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - ApiKeyAuth: []
+      - BearerAuth: []
+      summary: Update a webhook
+      tags:
+      - webhooks
   /health:
     get:
       description: Check if the API is healthy

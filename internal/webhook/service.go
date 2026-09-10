@@ -13,32 +13,33 @@ import (
 
 	"scriberr/internal/models"
 	"scriberr/pkg/logger"
+
 	"gorm.io/gorm"
 )
 
 type Event string
 
 const (
-	EventRecordingUploaded Event = "recording.uploaded"
+	EventRecordingUploaded    Event = "recording.uploaded"
 	EventTranscriptionSuccess Event = "transcription.completed"
-	EventTranscriptionFailed Event = "transcription.failed"
-	EventSummarySuccess Event = "summary.completed"
-	EventSummaryFailed Event = "summary.failed"
+	EventTranscriptionFailed  Event = "transcription.failed"
+	EventSummarySuccess       Event = "summary.completed"
+	EventSummaryFailed        Event = "summary.failed"
 )
 
 var AllEvents = []Event{EventRecordingUploaded, EventTranscriptionSuccess, EventTranscriptionFailed, EventSummarySuccess, EventSummaryFailed}
 
 type EventPayload struct {
-	Event Event `json:"event"`
-	JobID string `json:"job_id"`
-	Title *string `json:"title,omitempty"`
-	Status models.JobStatus `json:"status"`
-	AudioPath string `json:"audio_path"`
-	Transcript *string `json:"transcript,omitempty"`
-	Summary *string `json:"summary,omitempty"`
-	Error string `json:"error,omitempty"`
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-	OccurredAt time.Time `json:"occurred_at"`
+	Event      Event                  `json:"event"`
+	JobID      string                 `json:"job_id"`
+	Title      *string                `json:"title,omitempty"`
+	Status     models.JobStatus       `json:"status"`
+	AudioPath  string                 `json:"audio_path"`
+	Transcript *string                `json:"transcript,omitempty"`
+	Summary    *string                `json:"summary,omitempty"`
+	Error      string                 `json:"error,omitempty"`
+	Metadata   map[string]interface{} `json:"metadata,omitempty"`
+	OccurredAt time.Time              `json:"occurred_at"`
 }
 
 // WebhookPayload represents the data sent to the callback URL
@@ -56,66 +57,124 @@ type WebhookPayload struct {
 // Service handles webhook operations
 type Service struct {
 	client *http.Client
-	db *gorm.DB
+	db     *gorm.DB
 }
 
 func (s *Service) SetDatabase(db *gorm.DB) { s.db = db }
 
 // Dispatch sends an event to every enabled webhook subscribed to it.
 func (s *Service) Dispatch(ctx context.Context, event Event, job *models.TranscriptionJob, metadata map[string]interface{}, errorMessage string) {
-	if s.db == nil || job == nil { return }
+	if s.db == nil || job == nil {
+		return
+	}
 	var hooks []models.Webhook
-	if err := s.db.WithContext(ctx).Where("enabled = ?", true).Find(&hooks).Error; err != nil { logger.Error("Failed to load webhooks", "error", err); return }
+	if err := s.db.WithContext(ctx).Where("enabled = ?", true).Find(&hooks).Error; err != nil {
+		logger.Error("Failed to load webhooks", "error", err)
+		return
+	}
 	for _, hook := range hooks {
-		var events []string
-		if json.Unmarshal([]byte(hook.Events), &events) != nil { continue }
-		matched := false
-		for _, configured := range events { if configured == string(event) { matched = true; break } }
-		if !matched { continue }
+		if !subscribesTo(hook.Events, event) {
+			continue
+		}
 		payload := EventPayload{Event: event, JobID: job.ID, Title: job.Title, Status: job.Status, AudioPath: job.AudioPath, Transcript: job.Transcript, Summary: job.Summary, Error: errorMessage, Metadata: metadata, OccurredAt: time.Now().UTC()}
-		secret := ""; if hook.Secret != nil { secret = *hook.Secret }
+		secret := ""
+		if hook.Secret != nil {
+			secret = *hook.Secret
+		}
 		go func(h models.Webhook, p EventPayload, secret string) {
-			requestCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second); defer cancel()
-			if err := s.sendEvent(requestCtx, h.URL, secret, p); err != nil { logger.Error("Failed to send configured webhook", "webhook_id", h.ID, "event", p.Event, "error", err) }
+			requestCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
+			startedAt := time.Now()
+			statusCode, err := s.sendEvent(requestCtx, h.URL, secret, p)
+			durationMs := time.Since(startedAt).Milliseconds()
+			if err != nil {
+				logger.Error("Failed to send configured webhook", "webhook_id", h.ID, "event", p.Event, "status_code", statusCode, "duration_ms", durationMs, "error", err)
+				return
+			}
+			logger.Info("Configured webhook sent successfully", "webhook_id", h.ID, "event", p.Event, "status_code", statusCode, "duration_ms", durationMs)
 		}(hook, payload, secret)
 	}
 }
 
-func (s *Service) sendEvent(ctx context.Context, url, secret string, payload EventPayload) error {
-	data, err := json.Marshal(payload); if err != nil { return err }
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data)); if err != nil { return err }
-	req.Header.Set("Content-Type", "application/json"); req.Header.Set("User-Agent", "Scriberr-Webhook/1.0")
-	if secret != "" { mac := hmac.New(sha256.New, []byte(secret)); _, _ = mac.Write(data); req.Header.Set("X-Scriberr-Signature", "sha256="+fmt.Sprintf("%x", mac.Sum(nil))) }
-	resp, err := s.client.Do(req); if err != nil { return err }; defer resp.Body.Close(); _, _ = io.Copy(io.Discard, resp.Body)
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 { return fmt.Errorf("webhook returned status %d", resp.StatusCode) }; return nil
+func subscribesTo(eventsJSON string, event Event) bool {
+	var events []string
+	if err := json.Unmarshal([]byte(eventsJSON), &events); err != nil {
+		return false
+	}
+	for _, configured := range events {
+		if configured == string(event) {
+			return true
+		}
+	}
+	return false
+}
+
+func (s *Service) sendEvent(ctx context.Context, url, secret string, payload EventPayload) (int, error) {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return 0, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", "Scriberr-Webhook/1.0")
+	if secret != "" {
+		mac := hmac.New(sha256.New, []byte(secret))
+		_, _ = mac.Write(data)
+		req.Header.Set("X-Scriberr-Signature", "sha256="+fmt.Sprintf("%x", mac.Sum(nil)))
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return resp.StatusCode, fmt.Errorf("webhook returned status %d", resp.StatusCode)
+	}
+	return resp.StatusCode, nil
 }
 
 func (s *Service) List(ctx context.Context) ([]models.Webhook, error) {
 	var hooks []models.Webhook
-	if s.db == nil { return hooks, fmt.Errorf("webhook database is not configured") }
+	if s.db == nil {
+		return hooks, fmt.Errorf("webhook database is not configured")
+	}
 	err := s.db.WithContext(ctx).Order("created_at DESC").Find(&hooks).Error
 	return hooks, err
 }
 
 func (s *Service) Create(ctx context.Context, hook *models.Webhook) error {
-	if s.db == nil { return fmt.Errorf("webhook database is not configured") }
+	if s.db == nil {
+		return fmt.Errorf("webhook database is not configured")
+	}
 	return s.db.WithContext(ctx).Create(hook).Error
 }
 
 func (s *Service) Update(ctx context.Context, hook *models.Webhook) error {
-	if s.db == nil { return fmt.Errorf("webhook database is not configured") }
+	if s.db == nil {
+		return fmt.Errorf("webhook database is not configured")
+	}
 	return s.db.WithContext(ctx).Save(hook).Error
 }
 
 func (s *Service) Delete(ctx context.Context, id string) error {
-	if s.db == nil { return fmt.Errorf("webhook database is not configured") }
+	if s.db == nil {
+		return fmt.Errorf("webhook database is not configured")
+	}
 	return s.db.WithContext(ctx).Delete(&models.Webhook{}, "id = ?", id).Error
 }
 
 func (s *Service) Get(ctx context.Context, id string) (*models.Webhook, error) {
 	var hook models.Webhook
-	if s.db == nil { return nil, fmt.Errorf("webhook database is not configured") }
-	if err := s.db.WithContext(ctx).First(&hook, "id = ?", id).Error; err != nil { return nil, err }
+	if s.db == nil {
+		return nil, fmt.Errorf("webhook database is not configured")
+	}
+	if err := s.db.WithContext(ctx).First(&hook, "id = ?", id).Error; err != nil {
+		return nil, err
+	}
 	return &hook, nil
 }
 

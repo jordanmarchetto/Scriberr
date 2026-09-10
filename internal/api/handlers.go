@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
@@ -53,7 +54,7 @@ type Handler struct {
 	quickTranscription  *transcription.QuickTranscriptionService
 	multiTrackProcessor *processing.MultiTrackProcessor
 	broadcaster         *sse.Broadcaster
-	webhookService       *webhook.Service
+	webhookService      *webhook.Service
 }
 
 // NewHandler creates a new handler
@@ -98,7 +99,7 @@ func NewHandler(
 		quickTranscription:  quickTranscription,
 		multiTrackProcessor: multiTrackProcessor,
 		broadcaster:         broadcaster,
-		webhookService:       webhook.NewService(),
+		webhookService:      webhook.NewService(),
 	}
 }
 
