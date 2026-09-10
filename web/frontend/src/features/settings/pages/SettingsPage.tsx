@@ -17,6 +17,7 @@ import { LLMSettings } from "../components/LLMSettings";
 import { SummaryTemplateDialog, type SummaryTemplate } from "../components/SummaryTemplateDialog";
 import { SummaryTemplatesTable } from "../components/SummaryTemplatesTable";
 import { CLISettingsTab } from "../components/CLISettingsTab";
+import { AutoSummarySettings } from "../components/AutoSummarySettings";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 
 export function Settings() {
@@ -162,6 +163,7 @@ export function Settings() {
                   Configure an LLM provider in the LLMs tab to enable summary templates and model selection.
                 </div>
               )}
+              <AutoSummarySettings />
               <SummaryTemplatesTable onEdit={(tpl) => { setEditingSummary(tpl); setSummaryDialogOpen(true); }} refreshTrigger={summaryRefresh} disabled={!llmConfigured} />
             </div>
 

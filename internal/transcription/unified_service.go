@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"scriberr/internal/autosummary"
 	"scriberr/internal/models"
 	"scriberr/internal/repository"
 	"scriberr/internal/sse"
@@ -52,6 +53,7 @@ type UnifiedTranscriptionService struct {
 	jobRepo               repository.JobRepository
 	webhookService        *webhook.Service
 	broadcaster           *sse.Broadcaster
+	autoSummaryService    *autosummary.Service
 }
 
 // NewUnifiedTranscriptionService creates a new unified transcription service
@@ -76,6 +78,9 @@ func NewUnifiedTranscriptionService(jobRepo repository.JobRepository, tempDir, o
 func (u *UnifiedTranscriptionService) SetBroadcaster(b *sse.Broadcaster) {
 	u.broadcaster = b
 }
+
+// SetAutoSummaryService configures background summaries after successful transcription.
+func (u *UnifiedTranscriptionService) SetAutoSummaryService(service *autosummary.Service) { u.autoSummaryService = service }
 
 // Initialize prepares all registered models for use
 func (u *UnifiedTranscriptionService) Initialize(ctx context.Context) error {
@@ -203,6 +208,11 @@ func (u *UnifiedTranscriptionService) ProcessJob(ctx context.Context, jobID stri
 
 	// Success
 	updateExecutionStatus(models.StatusCompleted, "")
+	if u.autoSummaryService != nil {
+		go func() {
+			if err := u.autoSummaryService.Process(context.Background(), jobID); err != nil { logger.Warn("Automatic summary failed", "job_id", jobID, "error", err) }
+		}()
+	}
 	logger.Info("Job processed successfully", "job_id", jobID, "duration", time.Since(startTime))
 	return nil
 }
