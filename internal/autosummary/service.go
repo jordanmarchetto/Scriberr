@@ -11,10 +11,16 @@ import (
 	"scriberr/internal/models"
 	"scriberr/internal/repository"
 	transcriptioninterfaces "scriberr/internal/transcription/interfaces"
+	"scriberr/internal/webhook"
 	"scriberr/pkg/logger"
 
 	"gorm.io/gorm"
 )
+
+// WebhookDispatcher publishes summary lifecycle events.
+type WebhookDispatcher interface {
+	Dispatch(context.Context, webhook.Event, *models.TranscriptionJob, map[string]interface{}, string)
+}
 
 // Service generates summaries for completed transcriptions when enabled.
 type Service struct {
@@ -22,6 +28,7 @@ type Service struct {
 	summaryRepo        repository.SummaryRepository
 	llmRepo            repository.LLMConfigRepository
 	speakerMappingRepo repository.SpeakerMappingRepository
+	webhookDispatcher  WebhookDispatcher
 }
 
 func NewService(
@@ -38,7 +45,12 @@ func NewService(
 	}
 }
 
-func (s *Service) Process(ctx context.Context, jobID string) error {
+// SetWebhookDispatcher configures summary lifecycle event delivery.
+func (s *Service) SetWebhookDispatcher(dispatcher WebhookDispatcher) {
+	s.webhookDispatcher = dispatcher
+}
+
+func (s *Service) Process(ctx context.Context, jobID string) (err error) {
 	settings, err := s.summaryRepo.GetSettings(ctx)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -54,6 +66,12 @@ func (s *Service) Process(ctx context.Context, jobID string) error {
 	if err != nil {
 		return fmt.Errorf("load transcription: %w", err)
 	}
+	metadata := map[string]interface{}{"template_id": *settings.DefaultTemplateID}
+	defer func() {
+		if err != nil && s.webhookDispatcher != nil {
+			s.webhookDispatcher.Dispatch(context.Background(), webhook.EventSummaryFailed, job, metadata, err.Error())
+		}
+	}()
 	if job.Transcript == nil || strings.TrimSpace(*job.Transcript) == "" {
 		return fmt.Errorf("transcription has no transcript")
 	}
@@ -61,6 +79,8 @@ func (s *Service) Process(ctx context.Context, jobID string) error {
 	if err != nil {
 		return fmt.Errorf("load default summary template: %w", err)
 	}
+
+	metadata["model"] = template.Model
 
 	var speakerMappings []models.SpeakerMapping
 	if template.IncludeSpeakerInfo {
@@ -111,6 +131,10 @@ func (s *Service) Process(ctx context.Context, jobID string) error {
 	}
 	if err := s.jobRepo.UpdateSummary(ctx, job.ID, summary.Content); err != nil {
 		logger.Warn("Auto-summary saved but job cache update failed", "job_id", job.ID, "error", err)
+	}
+	job.Summary = &summary.Content
+	if s.webhookDispatcher != nil {
+		s.webhookDispatcher.Dispatch(context.Background(), webhook.EventSummarySuccess, job, metadata, "")
 	}
 	logger.Info("Automatic summary generated", "job_id", job.ID, "template_id", template.ID)
 	return nil

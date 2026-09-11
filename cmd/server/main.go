@@ -121,6 +121,7 @@ func main() {
 	autoSummaryService := autosummary.NewService(jobRepo, summaryRepo, llmConfigRepo, speakerMappingRepo)
 	unifiedProcessor.GetUnifiedService().SetAutoSummaryService(autoSummaryService)
 	unifiedProcessor.GetUnifiedService().SetBroadcaster(broadcaster)
+	unifiedProcessor.GetUnifiedService().SetWebhookDatabase(database.DB)
 
 	// Bootstrap embedded Python environment (for all adapters)
 	logger.Startup("python", "Preparing Python environment")
@@ -168,6 +169,7 @@ func main() {
 		multiTrackProcessor,
 		broadcaster,
 	)
+	handler.SetWebhookDatabase(database.DB)
 
 	// Set up router
 	router := api.SetupRoutes(handler, authService)

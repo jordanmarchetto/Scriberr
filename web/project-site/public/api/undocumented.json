@@ -496,6 +496,41 @@
       "summary": "Save summary settings",
       "description": "Create or update global summarization settings",
       "tag": "summaries"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/webhooks/",
+      "summary": "List webhooks",
+      "description": "List configured outbound webhook subscriptions without exposing signing secrets. See https://scriberr.app/docs/webhooks for setup and payload details.",
+      "tag": "webhooks"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/webhooks/deliveries",
+      "summary": "List webhook deliveries",
+      "description": "List the 50 most recent outbound webhook deliveries and their retry status. See https://scriberr.app/docs/webhooks for delivery behavior.",
+      "tag": "webhooks"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/webhooks/",
+      "summary": "Create a webhook",
+      "description": "Create an outbound webhook subscription for one or more recording lifecycle events. See https://scriberr.app/docs/webhooks for events and signature verification.",
+      "tag": "webhooks"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/webhooks/{id}",
+      "summary": "Update a webhook",
+      "description": "Update a webhook's name, URL, subscribed events, enabled state, and optionally its signing secret. See https://scriberr.app/docs/webhooks for signing details.",
+      "tag": "webhooks"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/webhooks/{id}",
+      "summary": "Delete a webhook",
+      "description": "Delete a configured outbound webhook subscription. Delivery history is retained.",
+      "tag": "webhooks"
     }
   ]
 }
