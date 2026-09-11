@@ -269,7 +269,7 @@ export function WebhookSettings() {
           </div>
           <Button onClick={beginCreate}>
             <Plus className="h-4 w-4" />
-            Add webhook
+            Add Webhook
           </Button>
         </div>
 
@@ -422,7 +422,7 @@ export function WebhookSettings() {
         <DialogContent className="max-w-full sm:max-w-2xl w-[calc(100vw-1rem)] max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-[var(--border-subtle)]">
             <DialogTitle className="text-xl font-semibold text-[var(--text-primary)]">
-              {editingID ? "Edit webhook" : "Add webhook"}
+              {editingID ? "Edit Webhook" : "Add Webhook"}
             </DialogTitle>
             <DialogDescription className="text-[var(--text-secondary)]">
               Choose where Scriberr sends events and optionally sign each request.
@@ -540,7 +540,7 @@ export function WebhookSettings() {
               ) : (
                 <Plus className="h-4 w-4" />
               )}
-              {editingID ? "Save changes" : "Add webhook"}
+              {editingID ? "Save Changes" : "Add Webhook"}
             </Button>
           </DialogFooter>
         </DialogContent>
