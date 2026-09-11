@@ -1,44 +1,20 @@
 services:
   scriberr:
-    build: .
-    container_name: scriberr
-    environment:
-      - PUID=${UID:-1024}
-      - PGID=${GID:-100}
-      - APP_ENV=${APP_ENV:-production}
-      - TZ=${TZ:-America/New_York}
-      # Set ALLOWED_ORIGINS to the HTTPS URL used for Scriberr if needed.
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
-      # Only set this to false when accessing Scriberr directly over plain HTTP.
-      - HF_TOKEN=${HF_TOKEN:-token_here}
-      - SECURE_COOKIES=${SECURE_COOKIES:-true}
-    volumes:
-      - ${DIR_RECORDINGS}:/voice_recordings
-      - ${DIR_DATA}/app_data:/app/data
-      - ${DIR_DATA}/whisperx-env:/app/whisperx-env
+    image: ghcr.io/rishikanthc/scriberr:latest
     ports:
-      - ${PORT:-8080}:8080
-    networks:
-      - services
-    restart: unless-stopped
-
-  scriberr-sidecarr:
-    image: docker.io/jordanmarchetto/scriberr-sidecarr:latest
-    container_name: scriberr-sidecarr
-    env_file:
-      - .env
-    environment:
-      - PUID=${UID:-1024}
-      - PGID=${GID:-100}
+      - "8080:8080"
     volumes:
-      - ${DIR_DATA}/app_data/transcripts:/watch/transcripts:ro
-      - ${DIR_DATA}/sidecarr_data:/app/data
-    depends_on:
-      - scriberr
-    networks:
-      - services
+      - scriberr_data:/app/data
+      - env_data:/app/whisperx-env
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      # Security: already set in container, but can be overridden
+      - APP_ENV=production
+      # CORS: comma-separated list of allowed origins for production
+      # - ALLOWED_ORIGINS=https://your-domain.com
     restart: unless-stopped
 
-networks:
-  services:
-    external: true
+volumes:
+  scriberr_data: {}
+  env_data: {}
