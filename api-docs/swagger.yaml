@@ -165,6 +165,25 @@ definitions:
       name:
         type: string
     type: object
+  api.CreateWebhookRequest:
+    properties:
+      enabled:
+        type: boolean
+      events:
+        items:
+          $ref: '#/definitions/webhook.Event'
+        type: array
+      name:
+        type: string
+      secret:
+        type: string
+      url:
+        type: string
+    required:
+    - events
+    - name
+    - url
+    type: object
   api.ErrorResponse:
     properties:
       error:
@@ -379,6 +398,29 @@ definitions:
       auto_transcription_enabled:
         type: boolean
     type: object
+  api.UpdateWebhookRequest:
+    properties:
+      clear_secret:
+        description: Remove the existing signing secret when true. This only applies
+          to updates.
+        type: boolean
+      enabled:
+        type: boolean
+      events:
+        items:
+          $ref: '#/definitions/webhook.Event'
+        type: array
+      name:
+        type: string
+      secret:
+        type: string
+      url:
+        type: string
+    required:
+    - events
+    - name
+    - url
+    type: object
   api.UserSettingsResponse:
     properties:
       auto_transcription_enabled:
@@ -417,27 +459,6 @@ definitions:
         type: string
       webhook_name:
         type: string
-    type: object
-  api.WebhookRequest:
-    properties:
-      clear_secret:
-        type: boolean
-      enabled:
-        type: boolean
-      events:
-        items:
-          $ref: '#/definitions/webhook.Event'
-        type: array
-      name:
-        type: string
-      secret:
-        type: string
-      url:
-        type: string
-    required:
-    - events
-    - name
-    - url
     type: object
   api.WebhookResponse:
     properties:
@@ -3256,7 +3277,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/api.WebhookRequest'
+          $ref: '#/definitions/api.CreateWebhookRequest'
       produces:
       - application/json
       responses:
@@ -3336,7 +3357,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/api.WebhookRequest'
+          $ref: '#/definitions/api.UpdateWebhookRequest'
       produces:
       - application/json
       responses:

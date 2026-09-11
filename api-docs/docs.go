@@ -3832,7 +3832,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.WebhookRequest"
+                            "$ref": "#/definitions/api.CreateWebhookRequest"
                         }
                     }
                 ],
@@ -3957,7 +3957,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.WebhookRequest"
+                            "$ref": "#/definitions/api.UpdateWebhookRequest"
                         }
                     }
                 ],
@@ -4369,6 +4369,34 @@ const docTemplate = `{
                 }
             }
         },
+        "api.CreateWebhookRequest": {
+            "type": "object",
+            "required": [
+                "events",
+                "name",
+                "url"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/webhook.Event"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "secret": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "api.ErrorResponse": {
             "type": "object",
             "properties": {
@@ -4685,6 +4713,38 @@ const docTemplate = `{
                 }
             }
         },
+        "api.UpdateWebhookRequest": {
+            "type": "object",
+            "required": [
+                "events",
+                "name",
+                "url"
+            ],
+            "properties": {
+                "clear_secret": {
+                    "description": "Remove the existing signing secret when true. This only applies to updates.",
+                    "type": "boolean"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "events": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/webhook.Event"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "secret": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "api.UserSettingsResponse": {
             "type": "object",
             "properties": {
@@ -4741,37 +4801,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "webhook_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "api.WebhookRequest": {
-            "type": "object",
-            "required": [
-                "events",
-                "name",
-                "url"
-            ],
-            "properties": {
-                "clear_secret": {
-                    "type": "boolean"
-                },
-                "enabled": {
-                    "type": "boolean"
-                },
-                "events": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/webhook.Event"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "secret": {
-                    "type": "string"
-                },
-                "url": {
                     "type": "string"
                 }
             }

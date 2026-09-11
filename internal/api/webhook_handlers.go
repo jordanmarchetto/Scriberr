@@ -15,11 +15,21 @@ import (
 	"github.com/google/uuid"
 )
 
-// WebhookRequest is the configuration accepted when creating or updating a webhook.
-type WebhookRequest struct {
-	Name        string          `json:"name" binding:"required"`
-	URL         string          `json:"url" binding:"required"`
-	Secret      string          `json:"secret,omitempty"`
+// CreateWebhookRequest is the configuration accepted when creating a webhook.
+type CreateWebhookRequest struct {
+	Name    string          `json:"name" binding:"required"`
+	URL     string          `json:"url" binding:"required"`
+	Secret  string          `json:"secret,omitempty"`
+	Events  []webhook.Event `json:"events" binding:"required"`
+	Enabled *bool           `json:"enabled"`
+}
+
+// UpdateWebhookRequest is the configuration accepted when updating a webhook.
+type UpdateWebhookRequest struct {
+	Name   string `json:"name" binding:"required"`
+	URL    string `json:"url" binding:"required"`
+	Secret string `json:"secret,omitempty"`
+	// Remove the existing signing secret when true. This only applies to updates.
 	ClearSecret bool            `json:"clear_secret,omitempty"`
 	Events      []webhook.Event `json:"events" binding:"required"`
 	Enabled     *bool           `json:"enabled"`
@@ -67,19 +77,19 @@ func toWebhookDeliveryResponse(d models.WebhookDelivery) WebhookDeliveryResponse
 	}
 }
 
-func validateWebhookRequest(req WebhookRequest) error {
-	parsed, err := url.ParseRequestURI(req.URL)
+func validateWebhookConfiguration(destinationURL string, events []webhook.Event) error {
+	parsed, err := url.ParseRequestURI(destinationURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
 		return fmt.Errorf("invalid webhook")
 	}
-	if len(req.Events) == 0 {
+	if len(events) == 0 {
 		return fmt.Errorf("invalid webhook")
 	}
 	valid := map[webhook.Event]bool{}
 	for _, event := range webhook.AllEvents {
 		valid[event] = true
 	}
-	for _, event := range req.Events {
+	for _, event := range events {
 		if !valid[event] {
 			return fmt.Errorf("invalid webhook")
 		}
@@ -141,7 +151,7 @@ func (h *Handler) ListWebhookDeliveries(c *gin.Context) {
 // @Tags webhooks
 // @Accept json
 // @Produce json
-// @Param request body WebhookRequest true "Webhook configuration"
+// @Param request body CreateWebhookRequest true "Webhook configuration"
 // @Success 201 {object} WebhookResponse
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
@@ -150,12 +160,12 @@ func (h *Handler) ListWebhookDeliveries(c *gin.Context) {
 // @Security BearerAuth
 // @Router /api/v1/webhooks/ [post]
 func (h *Handler) CreateWebhook(c *gin.Context) {
-	var req WebhookRequest
+	var req CreateWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := validateWebhookRequest(req); err != nil {
+	if err := validateWebhookConfiguration(req.URL, req.Events); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "a valid HTTP(S) URL and at least one supported event are required"})
 		return
 	}
@@ -182,7 +192,7 @@ func (h *Handler) CreateWebhook(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "Webhook ID"
-// @Param request body WebhookRequest true "Webhook configuration"
+// @Param request body UpdateWebhookRequest true "Webhook configuration"
 // @Success 200 {object} WebhookResponse
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
@@ -197,12 +207,12 @@ func (h *Handler) UpdateWebhook(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "webhook not found"})
 		return
 	}
-	var req WebhookRequest
+	var req UpdateWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if err := validateWebhookRequest(req); err != nil {
+	if err := validateWebhookConfiguration(req.URL, req.Events); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "a valid HTTP(S) URL and at least one supported event are required"})
 		return
 	}
