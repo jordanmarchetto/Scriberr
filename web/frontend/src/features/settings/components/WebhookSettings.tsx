@@ -93,6 +93,8 @@ export function WebhookSettings() {
   const [editingID, setEditingID] = useState<string | null>(null);
   const [form, setForm] = useState<WebhookForm>(emptyForm);
   const [error, setError] = useState("");
+  const [listError, setListError] = useState("");
+  const [updatingIDs, setUpdatingIDs] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     const headers = getAuthHeaders();
@@ -190,6 +192,48 @@ export function WebhookSettings() {
     await load();
   };
 
+  const toggleEnabled = async (
+    hook: WebhookSubscription,
+    enabled: boolean,
+  ) => {
+    setListError("");
+    setUpdatingIDs((current) => new Set(current).add(hook.id));
+    setHooks((current) =>
+      current.map((item) =>
+        item.id === hook.id ? { ...item, enabled } : item,
+      ),
+    );
+
+    try {
+      const response = await fetch(`/api/v1/webhooks/${hook.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({
+          name: hook.name,
+          url: hook.url,
+          events: hook.events,
+          enabled,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error("Could not update webhook");
+      }
+    } catch {
+      setHooks((current) =>
+        current.map((item) =>
+          item.id === hook.id ? { ...item, enabled: hook.enabled } : item,
+        ),
+      );
+      setListError(`Could not ${enabled ? "enable" : "disable"} ${hook.name}.`);
+    } finally {
+      setUpdatingIDs((current) => {
+        const next = new Set(current);
+        next.delete(hook.id);
+        return next;
+      });
+    }
+  };
+
   const remove = async (hook: WebhookSubscription) => {
     if (!confirm(`Delete ${hook.name}? Delivery history will be retained.`)) {
       return;
@@ -210,7 +254,7 @@ export function WebhookSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 sm:p-6 shadow-sm">
+      <div className="bg-[var(--bg-main)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4 sm:p-6 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
           <div>
             <div className="flex items-center gap-3 mb-1">
@@ -235,10 +279,15 @@ export function WebhookSettings() {
               No webhooks configured yet.
             </p>
           )}
+          {listError && (
+            <p className="text-sm text-[var(--danger-solid)]">
+              {listError}
+            </p>
+          )}
           {hooks.map((hook) => (
             <div
               key={hook.id}
-              className="flex items-center justify-between gap-3 bg-[var(--bg-main)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4"
+              className="flex items-center justify-between gap-3 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-[var(--radius-card)] p-4"
             >
               <div className="min-w-0">
                 <p className="font-medium text-[var(--text-primary)]">
@@ -257,7 +306,16 @@ export function WebhookSettings() {
                   {hook.has_secret ? " · signed" : ""}
                 </p>
               </div>
-              <DropdownMenu>
+              <div className="flex shrink-0 items-center gap-2">
+                <Switch
+                  checked={hook.enabled}
+                  disabled={updatingIDs.has(hook.id)}
+                  onCheckedChange={(enabled) =>
+                    void toggleEnabled(hook, enabled)
+                  }
+                  aria-label={`${hook.enabled ? "Disable" : "Enable"} ${hook.name}`}
+                />
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
@@ -283,7 +341,8 @@ export function WebhookSettings() {
                     Delete
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+                </DropdownMenu>
+              </div>
             </div>
           ))}
         </div>
@@ -424,18 +483,6 @@ export function WebhookSettings() {
                   aria-label="Signing secret"
                   type="password"
                 />
-              </div>
-              <div className="flex items-end pb-2">
-                <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
-                  <Switch
-                    checked={form.enabled}
-                    onCheckedChange={(checked) =>
-                      updateForm("enabled", checked)
-                    }
-                    aria-label="Enabled"
-                  />
-                  Enabled
-                </label>
               </div>
             </div>
 
