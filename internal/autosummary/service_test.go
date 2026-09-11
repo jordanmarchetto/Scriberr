@@ -1,12 +1,51 @@
 package autosummary
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
+	"time"
 
 	"scriberr/internal/models"
+	"scriberr/internal/repository"
 	transcriptioninterfaces "scriberr/internal/transcription/interfaces"
+
+	"github.com/glebarez/sqlite"
+	"gorm.io/gorm"
 )
+
+func newAutoSummaryTestService(t *testing.T) (*Service, *gorm.DB) {
+	t.Helper()
+	dsn := fmt.Sprintf("file:auto-summary-test-%d?mode=memory&cache=shared", time.Now().UnixNano())
+	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("open test database: %v", err)
+	}
+	if err := db.AutoMigrate(&models.SummarySetting{}, &models.SummaryTemplate{}); err != nil {
+		t.Fatalf("migrate test database: %v", err)
+	}
+	return &Service{summaryRepo: repository.NewSummaryRepository(db)}, db
+}
+
+func TestProcessDoesNothingWithoutSettings(t *testing.T) {
+	service, _ := newAutoSummaryTestService(t)
+
+	if err := service.Process(context.Background(), "job-123"); err != nil {
+		t.Fatalf("Process returned an error: %v", err)
+	}
+}
+
+func TestProcessDoesNothingWhenDisabled(t *testing.T) {
+	service, db := newAutoSummaryTestService(t)
+	if err := db.Create(&models.SummarySetting{AutoSummarize: false}).Error; err != nil {
+		t.Fatalf("create summary settings: %v", err)
+	}
+
+	if err := service.Process(context.Background(), "job-123"); err != nil {
+		t.Fatalf("Process returned an error: %v", err)
+	}
+}
 
 func TestBuildSummaryContentUsesPlainTranscriptText(t *testing.T) {
 	transcriptJSON := marshalTranscript(t, transcriptioninterfaces.TranscriptResult{

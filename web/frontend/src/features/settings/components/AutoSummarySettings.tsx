@@ -41,13 +41,15 @@ export function AutoSummarySettings() {
       const response = await fetch("/api/v1/summaries/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
-        body: JSON.stringify({ auto_summarize: enabled, default_template_id: templateID || null }),
+        body: JSON.stringify({ auto_summarize: enabled, default_template_id: templateID }),
       });
       if (!response.ok) {
         setMessage((await response.json()).error || "Failed to save auto-summary settings.");
         return;
       }
       setMessage("Auto-summary settings saved.");
+    } catch {
+      setMessage("Failed to save auto-summary settings.");
     } finally { setSaving(false); }
   };
 

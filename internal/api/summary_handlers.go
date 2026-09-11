@@ -161,11 +161,22 @@ func (h *Handler) UpdateSummaryTemplate(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Template ID"
 // @Success 204 {string} string "No Content"
+// @Failure 409 {object} map[string]string
 // @Failure 500 {object} map[string]string
 // @Security ApiKeyAuth
 // @Router /api/v1/summaries/{id} [delete]
 func (h *Handler) DeleteSummaryTemplate(c *gin.Context) {
 	id := c.Param("id")
+	settings, err := h.summaryRepo.GetSettings(c.Request.Context())
+	if err != nil && err != gorm.ErrRecordNotFound {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch summary settings"})
+		return
+	}
+	if settings != nil && settings.DefaultTemplateID != nil && *settings.DefaultTemplateID == id {
+		c.JSON(http.StatusConflict, gin.H{"error": "Choose or clear the default summary template before deleting it"})
+		return
+	}
+
 	if err := h.summaryRepo.Delete(c.Request.Context(), id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete template"})
 		return
@@ -228,15 +239,6 @@ func (h *Handler) SaveSummarySettings(c *gin.Context) {
 			if req.DefaultTemplateID != nil {
 				s.DefaultTemplateID = req.DefaultTemplateID
 			}
-			// We can't use Create from BaseRepository because it expects *T, but GetSettings returns *T.
-			// BaseRepository.Create expects *T.
-			// Actually BaseRepository[T] Create takes *T.
-			// But here T is models.SummaryTemplate, NOT models.SummarySetting.
-			// SummaryRepository handles SummaryTemplate.
-			// But GetSettings returns SummarySetting.
-			// So I can't use h.summaryRepo.Create(s) because s is SummarySetting, not SummaryTemplate.
-			// I need to add SaveSettings to SummaryRepository which handles creation too.
-			// I added SaveSettings(ctx, settings).
 			if s.AutoSummarize {
 				if s.DefaultTemplateID == nil || *s.DefaultTemplateID == "" {
 					c.JSON(http.StatusBadRequest, gin.H{"error": "a default summary template is required when auto-summarize is enabled"})
