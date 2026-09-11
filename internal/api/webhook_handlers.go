@@ -89,7 +89,7 @@ func validateWebhookRequest(req WebhookRequest) error {
 
 // ListWebhooks returns all configured webhook subscriptions.
 // @Summary List webhooks
-// @Description List configured outbound webhook subscriptions without exposing signing secrets
+// @Description List configured outbound webhook subscriptions without exposing signing secrets. See https://scriberr.app/docs/webhooks for setup and payload details.
 // @Tags webhooks
 // @Produce json
 // @Success 200 {array} WebhookResponse
@@ -113,7 +113,7 @@ func (h *Handler) ListWebhooks(c *gin.Context) {
 
 // ListWebhookDeliveries returns recent configured webhook delivery history.
 // @Summary List webhook deliveries
-// @Description List the 50 most recent outbound webhook deliveries and their retry status
+// @Description List the 50 most recent outbound webhook deliveries and their retry status. See https://scriberr.app/docs/webhooks for delivery behavior.
 // @Tags webhooks
 // @Produce json
 // @Success 200 {array} WebhookDeliveryResponse
@@ -137,7 +137,7 @@ func (h *Handler) ListWebhookDeliveries(c *gin.Context) {
 
 // CreateWebhook creates an outbound webhook subscription.
 // @Summary Create a webhook
-// @Description Create an outbound webhook subscription for one or more recording lifecycle events
+// @Description Create an outbound webhook subscription for one or more recording lifecycle events. See https://scriberr.app/docs/webhooks for events and signature verification.
 // @Tags webhooks
 // @Accept json
 // @Produce json
@@ -177,7 +177,7 @@ func (h *Handler) CreateWebhook(c *gin.Context) {
 
 // UpdateWebhook replaces an outbound webhook subscription's configuration.
 // @Summary Update a webhook
-// @Description Update a webhook's name, URL, subscribed events, enabled state, and optionally its signing secret
+// @Description Update a webhook's name, URL, subscribed events, enabled state, and optionally its signing secret. See https://scriberr.app/docs/webhooks for signing details.
 // @Tags webhooks
 // @Accept json
 // @Produce json
@@ -227,7 +227,7 @@ func (h *Handler) UpdateWebhook(c *gin.Context) {
 
 // DeleteWebhook removes an outbound webhook subscription.
 // @Summary Delete a webhook
-// @Description Delete a configured outbound webhook subscription
+// @Description Delete a configured outbound webhook subscription. Delivery history is retained.
 // @Tags webhooks
 // @Param id path string true "Webhook ID"
 // @Success 204

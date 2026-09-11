@@ -3767,7 +3767,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "List configured outbound webhook subscriptions without exposing signing secrets",
+                "description": "List configured outbound webhook subscriptions without exposing signing secrets. See https://scriberr.app/docs/webhooks for setup and payload details.",
                 "produces": [
                     "application/json"
                 ],
@@ -3814,7 +3814,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Create an outbound webhook subscription for one or more recording lifecycle events",
+                "description": "Create an outbound webhook subscription for one or more recording lifecycle events. See https://scriberr.app/docs/webhooks for events and signature verification.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3883,7 +3883,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "List the 50 most recent outbound webhook deliveries and their retry status",
+                "description": "List the 50 most recent outbound webhook deliveries and their retry status. See https://scriberr.app/docs/webhooks for delivery behavior.",
                 "produces": [
                     "application/json"
                 ],
@@ -3932,7 +3932,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Update a webhook's name, URL, subscribed events, enabled state, and optionally its signing secret",
+                "description": "Update a webhook's name, URL, subscribed events, enabled state, and optionally its signing secret. See https://scriberr.app/docs/webhooks for signing details.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4015,7 +4015,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Delete a configured outbound webhook subscription",
+                "description": "Delete a configured outbound webhook subscription. Delivery history is retained.",
                 "tags": [
                     "webhooks"
                 ],
